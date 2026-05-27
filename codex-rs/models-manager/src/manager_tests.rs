@@ -279,6 +279,21 @@ async fn get_model_info_uses_custom_catalog() {
 }
 
 #[tokio::test]
+async fn get_model_info_refreshes_before_fallback() {
+    let codex_home = tempdir().expect("temp dir");
+    let config = ModelsManagerConfig::default();
+    let remote = remote_model("late-ne-model", "Late NE", /*priority*/ 0);
+    let endpoint = TestModelsEndpoint::new(vec![vec![remote]]);
+    let manager = openai_manager_for_tests(codex_home.path().to_path_buf(), endpoint.clone());
+
+    let model_info = manager.get_model_info("late-ne-model", &config).await;
+
+    assert_eq!(model_info.slug, "late-ne-model");
+    assert!(!model_info.used_fallback_model_metadata);
+    assert_eq!(endpoint.fetch_count(), 1);
+}
+
+#[tokio::test]
 async fn get_model_info_matches_namespaced_suffix() {
     let config = ModelsManagerConfig::default();
     let mut remote = remote_model("gpt-image", "Image", /*priority*/ 0);

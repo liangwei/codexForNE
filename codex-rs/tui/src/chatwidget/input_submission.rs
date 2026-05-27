@@ -118,6 +118,15 @@ impl ChatWidget {
         {
             return (false, None);
         }
+        if self.ne_login_required() {
+            let restored = user_message_for_restore(user_message, &history_record);
+            self.restore_user_message_to_composer(restored);
+            self.add_info_message(
+                "NE login required.".to_string(),
+                Some("Run /login before sending messages.".to_string()),
+            );
+            return (false, None);
+        }
         if (!user_message.local_images.is_empty() || !user_message.remote_image_urls.is_empty())
             && !self.current_model_supports_images()
         {

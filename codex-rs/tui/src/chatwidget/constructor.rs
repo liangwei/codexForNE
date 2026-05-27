@@ -35,6 +35,8 @@ impl ChatWidget {
         let mut config = config;
         config.model = model.clone();
         let prevent_idle_sleep = config.features.enabled(Feature::PreventIdleSleep);
+        let ne_authenticated = config.model_provider_id != NE_PROVIDER_ID
+            || std::env::var(NECLI_AUTH_STATUS_ENV).ok().as_deref() == Some("logged-in");
         let mut rng = rand::rng();
         let placeholder = PLACEHOLDERS[rng.random_range(0..PLACEHOLDERS.len())].to_string();
         let side_placeholder =
@@ -114,6 +116,7 @@ impl ChatWidget {
             active_collaboration_mask,
             has_chatgpt_account,
             model_catalog,
+            ne_authenticated,
             session_telemetry,
             session_header: SessionHeader::new(header_model),
             initial_user_message,
@@ -263,6 +266,7 @@ impl ChatWidget {
             .bottom_pane
             .set_connectors_enabled(widget.connectors_enabled());
         widget.refresh_status_surfaces();
+        widget.show_ne_login_prompt_if_needed();
 
         widget
     }

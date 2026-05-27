@@ -162,6 +162,16 @@ pub trait ModelsManager: fmt::Debug + Send + Sync {
     async fn get_model_info(&self, model: &str, config: &ModelsManagerConfig) -> ModelInfo {
         async move {
             let remote_models = self.get_remote_models().await;
+            if let Some(model_info) = model_info_from_candidates(model, &remote_models) {
+                return model_info::with_config_overrides(model_info, config);
+            }
+            let refreshed_models = self
+                .raw_model_catalog(RefreshStrategy::OnlineIfUncached)
+                .await
+                .models;
+            if let Some(model_info) = model_info_from_candidates(model, &refreshed_models) {
+                return model_info::with_config_overrides(model_info, config);
+            }
             construct_model_info_from_candidates(model, &remote_models, config)
         }
         .instrument(tracing::info_span!("get_model_info", model = model))
@@ -461,20 +471,21 @@ pub(crate) fn construct_model_info_from_candidates(
     candidates: &[ModelInfo],
     config: &ModelsManagerConfig,
 ) -> ModelInfo {
+    let model_info = model_info_from_candidates(model, candidates)
+        .unwrap_or_else(|| model_info::model_info_from_slug(model));
+    model_info::with_config_overrides(model_info, config)
+}
+
+fn model_info_from_candidates(model: &str, candidates: &[ModelInfo]) -> Option<ModelInfo> {
     // First use the normal longest-prefix match. If that misses, allow a narrowly scoped
     // retry for namespaced slugs like `custom/gpt-5.3-codex`.
     let remote = find_model_by_longest_prefix(model, candidates)
         .or_else(|| find_model_by_namespaced_suffix(model, candidates));
-    let model_info = if let Some(remote) = remote {
-        ModelInfo {
-            slug: model.to_string(),
-            used_fallback_model_metadata: false,
-            ..remote
-        }
-    } else {
-        model_info::model_info_from_slug(model)
-    };
-    model_info::with_config_overrides(model_info, config)
+    remote.map(|remote| ModelInfo {
+        slug: model.to_string(),
+        used_fallback_model_metadata: false,
+        ..remote
+    })
 }
 
 #[cfg(test)]

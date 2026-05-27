@@ -1,3 +1,4 @@
+use super::permission_text::ne_permission_description;
 use super::*;
 
 impl ChatWidget {
@@ -26,17 +27,13 @@ impl ChatWidget {
             );
             return;
         };
-        let mut items = vec![
-            self.builtin_permission_mode_selection_item(
-                default,
-                ":workspace",
-                default
-                    .description
-                    .replace(" (Identical to Agent mode)", ""),
-                AskForApproval::from(default.approval),
-                ApprovalsReviewer::User,
-            ),
-        ];
+        let mut items = vec![self.builtin_permission_mode_selection_item(
+            default,
+            ":workspace",
+            ne_permission_description(default.description),
+            AskForApproval::from(default.approval),
+            ApprovalsReviewer::User,
+        )];
         if self.config.features.enabled(Feature::GuardianApproval) {
             items.push(self.builtin_permission_mode_selection_item(
                 default,
@@ -49,14 +46,14 @@ impl ChatWidget {
         items.push(self.builtin_permission_mode_selection_item(
             full_access,
             ":danger-no-sandbox",
-            full_access.description.to_string(),
+            ne_permission_description(full_access.description),
             AskForApproval::from(full_access.approval),
             ApprovalsReviewer::User,
         ));
         items.push(self.builtin_permission_mode_selection_item(
             read_only,
             ":read-only",
-            read_only.description.to_string(),
+            ne_permission_description(read_only.description),
             AskForApproval::from(read_only.approval),
             ApprovalsReviewer::User,
         ));

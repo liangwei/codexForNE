@@ -349,6 +349,7 @@ use self::interrupts::InterruptManager;
 mod keymap_picker;
 mod mcp_startup;
 use self::mcp_startup::McpStartupStatus;
+mod ne_login;
 mod pets;
 mod session_flow;
 mod session_header;
@@ -372,6 +373,7 @@ mod model_popups;
 mod notifications;
 use self::notifications::Notification;
 mod permission_popups;
+mod permission_text;
 mod permissions_menu;
 mod protocol;
 mod protocol_requests;
@@ -466,6 +468,8 @@ const AUTO_REVIEW_DESCRIPTION: &str = "Same workspace-write permissions as Defau
 const DEFAULT_OPENAI_BASE_URL: &str = "https://api.openai.com/v1";
 const DEFAULT_STATUS_LINE_ITEMS: [&str; 2] = ["model-with-reasoning", "current-dir"];
 const MAX_AGENT_COPY_HISTORY: usize = 32;
+const NE_PROVIDER_ID: &str = "ne";
+const NECLI_AUTH_STATUS_ENV: &str = "NECLI_AUTH_STATUS";
 
 /// Common initialization parameters shared by all `ChatWidget` constructors.
 pub(crate) struct ChatWidgetInit {
@@ -532,6 +536,7 @@ pub(crate) struct ChatWidget {
     active_collaboration_mask: Option<CollaborationModeMask>,
     has_chatgpt_account: bool,
     model_catalog: Arc<ModelCatalog>,
+    ne_authenticated: bool,
     session_telemetry: SessionTelemetry,
     session_header: SessionHeader,
     initial_user_message: Option<UserMessage>,

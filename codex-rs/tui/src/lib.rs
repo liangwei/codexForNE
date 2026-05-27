@@ -152,6 +152,7 @@ mod model_catalog;
 mod model_migration;
 mod motion;
 mod multi_agents;
+mod ne_cli;
 mod notifications;
 #[cfg(any(not(debug_assertions), test))]
 mod npm_registry;
@@ -1305,7 +1306,9 @@ async fn run_ratatui_app(
     let uses_remote_workspace = app_server_target.uses_remote_workspace();
     color_eyre::install()?;
 
-    tooltips::announcement::prewarm();
+    if initial_config.show_tooltips {
+        tooltips::announcement::prewarm();
+    }
 
     // Forward panic reports through tracing so they appear in the UI status
     // line, but do not swallow the default/color-eyre panic handler.

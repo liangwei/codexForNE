@@ -1202,12 +1202,17 @@ async fn slash_quit_requests_exit() {
 }
 
 #[tokio::test]
-async fn slash_logout_requests_app_server_logout() {
+async fn slash_logout_requests_ne_logout() {
     let (mut chat, mut rx, _op_rx) = make_chatwidget_manual(/*model_override*/ None).await;
 
     chat.dispatch_command(SlashCommand::Logout);
 
-    assert_matches!(rx.try_recv(), Ok(AppEvent::Logout));
+    let event = match tokio::time::timeout(std::time::Duration::from_secs(1), rx.recv()).await {
+        Ok(Some(event)) => event,
+        Ok(None) => panic!("NE logout event channel closed"),
+        Err(_) => panic!("NE logout helper did not finish"),
+    };
+    assert_matches!(event, AppEvent::NeLogoutCompleted { result: Err(_) });
 }
 
 #[tokio::test]

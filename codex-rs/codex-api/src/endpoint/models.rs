@@ -4,12 +4,25 @@ use crate::error::ApiError;
 use crate::provider::Provider;
 use codex_client::HttpTransport;
 use codex_client::RequestTelemetry;
+use codex_protocol::config_types::ReasoningSummary;
+use codex_protocol::openai_models::ApplyPatchToolType;
+use codex_protocol::openai_models::ConfigShellToolType;
+use codex_protocol::openai_models::InputModality;
 use codex_protocol::openai_models::ModelInfo;
+use codex_protocol::openai_models::ModelVisibility;
 use codex_protocol::openai_models::ModelsResponse;
+use codex_protocol::openai_models::ReasoningEffort;
+use codex_protocol::openai_models::ReasoningEffortPreset;
+use codex_protocol::openai_models::TruncationPolicyConfig;
+use codex_protocol::openai_models::WebSearchToolType;
 use http::HeaderMap;
 use http::Method;
 use http::header::ETAG;
+use serde::Deserialize;
 use std::sync::Arc;
+
+const OPENAI_COMPAT_CONTEXT_WINDOW: i64 = 128_000;
+const OPENAI_COMPAT_EFFECTIVE_CONTEXT_WINDOW_PERCENT: i64 = 95;
 
 pub struct ModelsClient<T: HttpTransport> {
     session: EndpointSession<T>,
@@ -61,16 +74,105 @@ impl<T: HttpTransport> ModelsClient<T> {
             .and_then(|value| value.to_str().ok())
             .map(ToString::to_string);
 
-        let ModelsResponse { models } = serde_json::from_slice::<ModelsResponse>(&resp.body)
-            .map_err(|e| {
-                ApiError::Stream(format!(
-                    "failed to decode models response: {e}; body: {}",
-                    String::from_utf8_lossy(&resp.body)
-                ))
-            })?;
+        let models = parse_models_response(&resp.body).map_err(|err| {
+            ApiError::Stream(format!(
+                "failed to decode models response: {err}; body: {}",
+                String::from_utf8_lossy(&resp.body)
+            ))
+        })?;
 
         Ok((models, header_etag))
     }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum ModelsEndpointResponse {
+    Codex(ModelsResponse),
+    OpenAi(OpenAiModelsResponse),
+}
+
+#[derive(Deserialize)]
+struct OpenAiModelsResponse {
+    data: Vec<OpenAiModelEntry>,
+}
+
+#[derive(Deserialize)]
+struct OpenAiModelEntry {
+    id: String,
+}
+
+fn parse_models_response(body: &[u8]) -> Result<Vec<ModelInfo>, String> {
+    match serde_json::from_slice::<ModelsEndpointResponse>(body).map_err(|err| err.to_string())? {
+        ModelsEndpointResponse::Codex(response) => Ok(response.models),
+        ModelsEndpointResponse::OpenAi(response) => response
+            .data
+            .into_iter()
+            .enumerate()
+            .map(|(index, model)| openai_compatible_model_info(model, index))
+            .collect(),
+    }
+}
+
+fn openai_compatible_model_info(
+    model: OpenAiModelEntry,
+    index: usize,
+) -> Result<ModelInfo, String> {
+    let id = model.id.trim();
+    if id.is_empty() {
+        return Err("OpenAI-compatible model entry did not include a non-empty id.".to_string());
+    }
+    let priority = i32::try_from(index).unwrap_or(i32::MAX);
+    Ok(ModelInfo {
+        slug: id.to_string(),
+        display_name: id.to_string(),
+        description: Some(format!("OpenAI-compatible model {id}")),
+        default_reasoning_level: Some(ReasoningEffort::XHigh),
+        supported_reasoning_levels: openai_compatible_reasoning_levels(),
+        shell_type: ConfigShellToolType::ShellCommand,
+        visibility: ModelVisibility::List,
+        supported_in_api: true,
+        priority,
+        additional_speed_tiers: Vec::new(),
+        service_tiers: Vec::new(),
+        default_service_tier: None,
+        availability_nux: None,
+        upgrade: None,
+        base_instructions: String::new(),
+        model_messages: None,
+        supports_reasoning_summaries: false,
+        default_reasoning_summary: ReasoningSummary::Auto,
+        support_verbosity: false,
+        default_verbosity: None,
+        apply_patch_tool_type: Some(ApplyPatchToolType::Freeform),
+        web_search_tool_type: WebSearchToolType::Text,
+        truncation_policy: TruncationPolicyConfig::tokens(OPENAI_COMPAT_CONTEXT_WINDOW),
+        supports_parallel_tool_calls: true,
+        supports_image_detail_original: false,
+        context_window: Some(OPENAI_COMPAT_CONTEXT_WINDOW),
+        max_context_window: Some(OPENAI_COMPAT_CONTEXT_WINDOW),
+        auto_compact_token_limit: None,
+        effective_context_window_percent: OPENAI_COMPAT_EFFECTIVE_CONTEXT_WINDOW_PERCENT,
+        experimental_supported_tools: Vec::new(),
+        input_modalities: vec![InputModality::Text],
+        used_fallback_model_metadata: false,
+        supports_search_tool: false,
+    })
+}
+
+fn openai_compatible_reasoning_levels() -> Vec<ReasoningEffortPreset> {
+    [
+        (ReasoningEffort::Low, "Low reasoning"),
+        (ReasoningEffort::Medium, "Medium reasoning"),
+        (ReasoningEffort::High, "High reasoning"),
+        (ReasoningEffort::XHigh, "Extra high reasoning"),
+    ]
+    .into_iter()
+    .map(|(effort, description)| ReasoningEffortPreset {
+        effort,
+        description: description.to_string(),
+    })
+    .collect()
 }
 
 #[cfg(test)]
@@ -242,6 +344,34 @@ mod tests {
         assert_eq!(models[0].slug, "gpt-test");
         assert_eq!(models[0].supported_in_api, true);
         assert_eq!(models[0].priority, 1);
+    }
+
+    #[test]
+    fn parses_openai_compatible_models_response() {
+        let body = serde_json::to_vec(&json!({
+            "object": "list",
+            "data": [
+                {
+                    "id": "kimi-k2.6",
+                    "object": "model",
+                    "created": 1770000000,
+                    "owned_by": "ne"
+                }
+            ]
+        }))
+        .expect("response should serialize");
+
+        let models = parse_models_response(&body).expect("response should parse");
+
+        assert_eq!(models.len(), 1);
+        assert_eq!(models[0].slug, "kimi-k2.6");
+        assert_eq!(models[0].display_name, "kimi-k2.6");
+        assert_eq!(models[0].visibility, ModelVisibility::List);
+        assert_eq!(
+            models[0].default_reasoning_level,
+            Some(ReasoningEffort::XHigh)
+        );
+        assert!(!models[0].used_fallback_model_metadata);
     }
 
     #[tokio::test]

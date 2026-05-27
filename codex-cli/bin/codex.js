@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Unified entry point for the Codex CLI.
+// Unified entry point for the NE-CLI native binary.
 
 import { spawn } from "node:child_process";
 import { existsSync, realpathSync } from "fs";
 import { createRequire } from "node:module";
 import path from "path";
 import { fileURLToPath } from "url";
+import { applyNeCliDefaults } from "./ne-defaults.js";
 
 // __dirname equivalent in ESM
 const __filename = fileURLToPath(import.meta.url);
@@ -13,12 +14,12 @@ const __dirname = path.dirname(__filename);
 const require = createRequire(import.meta.url);
 
 const PLATFORM_PACKAGE_BY_TARGET = {
-  "x86_64-unknown-linux-musl": "@openai/codex-linux-x64",
-  "aarch64-unknown-linux-musl": "@openai/codex-linux-arm64",
-  "x86_64-apple-darwin": "@openai/codex-darwin-x64",
-  "aarch64-apple-darwin": "@openai/codex-darwin-arm64",
-  "x86_64-pc-windows-msvc": "@openai/codex-win32-x64",
-  "aarch64-pc-windows-msvc": "@openai/codex-win32-arm64",
+  "x86_64-unknown-linux-musl": "@noteexpress/cli-linux-x64",
+  "aarch64-unknown-linux-musl": "@noteexpress/cli-linux-arm64",
+  "x86_64-apple-darwin": "@noteexpress/cli-darwin-x64",
+  "aarch64-apple-darwin": "@noteexpress/cli-darwin-arm64",
+  "x86_64-pc-windows-msvc": "@noteexpress/cli-win32-x64",
+  "aarch64-pc-windows-msvc": "@noteexpress/cli-win32-arm64",
 };
 
 const { platform, arch } = process;
@@ -117,10 +118,10 @@ if (!nativePackage) {
   const packageManager = detectPackageManager();
   const updateCommand =
     packageManager === "bun"
-      ? "bun install -g @openai/codex@latest"
-      : "npm install -g @openai/codex@latest";
+      ? "bun install -g @noteexpress/cli@latest"
+      : "npm install -g @noteexpress/cli@latest";
   throw new Error(
-    `Missing optional dependency ${platformPackage}. Reinstall Codex: ${updateCommand}`,
+    `Missing optional dependency ${platformPackage}. Reinstall NE-CLI: ${updateCommand}`,
   );
 }
 
@@ -143,7 +144,7 @@ function getUpdatedPath(newDirs) {
 }
 
 /**
- * Use heuristics to detect the package manager that was used to install Codex
+ * Use heuristics to detect the package manager that was used to install NE-CLI
  * in order to give the user a hint about how to update it.
  */
 function detectPackageManager() {
@@ -181,7 +182,12 @@ const packageManagerEnvVar =
 env[packageManagerEnvVar] = "1";
 env.CODEX_MANAGED_PACKAGE_ROOT = realpathSync(path.join(__dirname, ".."));
 
-const child = spawn(binaryPath, process.argv.slice(2), {
+const childArgs =
+  process.env.NECLI_ENABLE_DEFAULTS === "1"
+    ? await applyNeCliDefaults(process.argv.slice(2), env)
+    : process.argv.slice(2);
+
+const child = spawn(binaryPath, childArgs, {
   stdio: "inherit",
   env,
 });

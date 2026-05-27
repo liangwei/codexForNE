@@ -48,6 +48,7 @@ use codex_protocol::models::ActivePermissionProfile;
 use codex_protocol::openai_models::ReasoningEffort;
 use codex_realtime_webrtc::RealtimeWebrtcEvent;
 use codex_realtime_webrtc::RealtimeWebrtcSessionHandle;
+use serde::Deserialize;
 
 use crate::history_cell::HistoryCell;
 
@@ -72,6 +73,13 @@ pub(crate) struct HistoryLookupResponse {
     pub(crate) offset: usize,
     pub(crate) log_id: u64,
     pub(crate) entry: Option<String>,
+}
+
+/// Result returned by the NE login helper after credentials are accepted.
+#[derive(Debug, Deserialize)]
+pub(crate) struct NeLoginResult {
+    pub(crate) default_model: String,
+    pub(crate) models: Vec<ModelPreset>,
 }
 
 impl RealtimeAudioDeviceKind {
@@ -220,9 +228,6 @@ pub(crate) enum AppEvent {
     /// background tasks, rollout flush, or child process cleanup).
     Exit(ExitMode),
 
-    /// Request app-server account logout, then exit after it succeeds.
-    Logout,
-
     /// Request to exit the application due to a fatal error.
     #[allow(dead_code)]
     FatalExitRequest(String),
@@ -248,6 +253,16 @@ pub(crate) enum AppEvent {
     FileSearchResult {
         query: String,
         matches: Vec<FileMatch>,
+    },
+
+    /// Result of logging into NE and refreshing the NE model dictionary.
+    NeLoginCompleted {
+        result: Result<NeLoginResult, String>,
+    },
+
+    /// Result of clearing local NE credentials.
+    NeLogoutCompleted {
+        result: Result<(), String>,
     },
 
     /// Refresh account rate limits in the background.

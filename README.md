@@ -1,71 +1,55 @@
-<p align="center"><strong>Codex CLI</strong> is a coding agent from OpenAI that runs locally on your computer.
-<p align="center">
-  <img src="https://github.com/openai/codex/blob/main/.github/codex-cli-splash.png" alt="Codex CLI splash" width="80%" />
-</p>
-</br>
-If you want Codex in your code editor (VS Code, Cursor, Windsurf), <a href="https://developers.openai.com/codex/ide">install in your IDE.</a>
-</br>If you want the desktop app experience, run <code>codex app</code> or visit <a href="https://chatgpt.com/codex?app-landing-page=true">the Codex App page</a>.
-</br>If you are looking for the <em>cloud-based agent</em> from OpenAI, <strong>Codex Web</strong>, go to <a href="https://chatgpt.com/codex">chatgpt.com/codex</a>.</p>
+# NE-CLI
 
----
+NE-CLI is a local coding agent for NoteExpress users. It runs in your terminal,
+works inside the current project directory, and uses NoteExpress model services
+through the `necli` command.
 
-## Quickstart
+## Install
 
-### Installing and running Codex CLI
-
-Run the following on Mac or Linux to install Codex CLI:
-
-```shell
-curl -fsSL https://chatgpt.com/codex/install.sh | sh
+```powershell
+npm install -g @noteexpress/cli
 ```
 
-Run the following on Windows to install Codex CLI:
+After installation, start an interactive session:
 
-```
-powershell -ExecutionPolicy ByPass -c "irm https://chatgpt.com/codex/install.ps1 | iex"
-```
-
-Codex CLI can also be installed via the following package managers:
-
-```shell
-# Install using npm
-npm install -g @openai/codex
+```powershell
+necli
 ```
 
-```shell
-# Install using Homebrew
-brew install --cask codex
+Run a one-off task:
+
+```powershell
+necli exec "Say exactly: ok"
 ```
 
-Then simply run `codex` to get started.
+## Login
 
-<details>
-<summary>You can also go to the <a href="https://github.com/openai/codex/releases/latest">latest GitHub Release</a> and download the appropriate binary for your platform.</summary>
+NE-CLI uses a NoteExpress token.
 
-Each GitHub Release contains many executables, but in practice, you likely want one of these:
+```powershell
+"<your-token>" | necli login --with-token
+necli login status
+```
 
-- macOS
-  - Apple Silicon/arm64: `codex-aarch64-apple-darwin.tar.gz`
-  - x86_64 (older Mac hardware): `codex-x86_64-apple-darwin.tar.gz`
-- Linux
-  - x86_64: `codex-x86_64-unknown-linux-musl.tar.gz`
-  - arm64: `codex-aarch64-unknown-linux-musl.tar.gz`
+You can also provide the token through `NE_CLI_API_KEY`.
 
-Each archive contains a single entry with the platform baked into the name (e.g., `codex-x86_64-unknown-linux-musl`), so you likely want to rename it to `codex` after extracting it.
+## Defaults
 
-</details>
+By default, `necli` uses the NE provider and the `ne-scientific` model. To use a
+different NE model:
 
-### Using Codex with your ChatGPT plan
+```powershell
+$env:NE_CLI_MODEL = "your-model-id"
+necli
+```
 
-Run `codex` and select **Sign in with ChatGPT**. We recommend signing into your ChatGPT account to use Codex as part of your Plus, Pro, Business, Edu, or Enterprise plan. [Learn more about what's included in your ChatGPT plan](https://help.openai.com/en/articles/11369540-codex-in-chatgpt).
+## Files And Commands
 
-You can also use Codex with an API key, but this requires [additional setup](https://developers.openai.com/codex/auth#sign-in-with-an-api-key).
+In an interactive session, NE-CLI can read files, search the workspace, edit
+content, and run commands after the model requests the corresponding tool. It is
+designed for project-level coding and documentation work rather than simple
+chat-only usage.
 
-## Docs
+## License
 
-- [**Codex Documentation**](https://developers.openai.com/codex)
-- [**Contributing**](./docs/contributing.md)
-- [**Installing & building**](./docs/install.md)
-- [**Open source fund**](./docs/open-source-fund.md)
-
-This repository is licensed under the [Apache-2.0 License](LICENSE).
+This project is licensed under the Apache-2.0 License.

@@ -203,6 +203,9 @@ impl ChatWidget {
             SlashCommand::Model => {
                 self.open_model_popup();
             }
+            SlashCommand::Login => {
+                self.open_ne_login_prompt();
+            }
             SlashCommand::Realtime => {
                 if !self.realtime_conversation_enabled() {
                     return;
@@ -326,7 +329,7 @@ impl ChatWidget {
                 self.request_quit_without_confirmation();
             }
             SlashCommand::Logout => {
-                self.app_event_tx.send(AppEvent::Logout);
+                self.start_ne_logout();
             }
             SlashCommand::Copy => {
                 self.copy_last_agent_markdown();
@@ -956,6 +959,7 @@ impl ChatWidget {
             | SlashCommand::Compact
             | SlashCommand::Review
             | SlashCommand::Model
+            | SlashCommand::Login
             | SlashCommand::Realtime
             | SlashCommand::Settings
             | SlashCommand::Personality

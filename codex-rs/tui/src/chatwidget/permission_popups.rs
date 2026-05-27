@@ -4,6 +4,7 @@
 //! Windows-specific sandbox prompting lives beside it in
 //! `windows_sandbox_prompts`.
 
+use super::permission_text::ne_permission_description;
 use super::*;
 
 impl ChatWidget {
@@ -60,8 +61,7 @@ impl ChatWidget {
             } else {
                 preset.label.to_string()
             };
-            let base_description =
-                Some(preset.description.replace(" (Identical to Agent mode)", ""));
+            let base_description = Some(ne_permission_description(preset.description));
             let approval_disabled_reason = match self
                 .config
                 .permissions
@@ -415,7 +415,7 @@ impl ChatWidget {
         let mut header_children: Vec<Box<dyn Renderable>> = Vec::new();
         let title_line = Line::from("Enable full access?").bold();
         let info_line = Line::from(vec![
-            "When Codex runs with full access, it can edit any file on your computer and run commands with network, without your approval. "
+            "When NE-CLI runs with full access, it can edit any file on your computer and run commands with network, without your approval. "
                 .into(),
             "Exercise caution when enabling full access. This significantly increases the risk of data loss, leaks, or unexpected behavior."
                 .fg(Color::Red),

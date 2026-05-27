@@ -302,19 +302,6 @@ impl App {
                 }
                 return Ok(self.handle_exit_mode(app_server, mode).await);
             }
-            AppEvent::Logout => match app_server.logout_account().await {
-                Ok(()) => {
-                    self.show_shutdown_feedback(tui)?;
-                    return Ok(self
-                        .handle_exit_mode(app_server, ExitMode::ShutdownFirst)
-                        .await);
-                }
-                Err(err) => {
-                    tracing::error!("failed to logout: {err}");
-                    self.chat_widget
-                        .add_error_message(format!("Logout failed: {err}"));
-                }
-            },
             AppEvent::FatalExitRequest(message) => {
                 return Ok(AppRunControl::Exit(ExitReason::Fatal(message)));
             }
@@ -699,6 +686,12 @@ impl App {
             }
             AppEvent::FileSearchResult { query, matches } => {
                 self.chat_widget.apply_file_search_result(query, matches);
+            }
+            AppEvent::NeLoginCompleted { result } => {
+                self.handle_ne_login_completed(app_server, result).await;
+            }
+            AppEvent::NeLogoutCompleted { result } => {
+                self.handle_ne_logout_completed(result);
             }
             AppEvent::RefreshRateLimits { origin } => {
                 self.refresh_rate_limits(app_server, origin);
@@ -1210,7 +1203,7 @@ impl App {
                                     Line::from(vec!["• ".dim(), "Sandbox ready".into()]),
                                     Line::from(vec![
                                         "  ".into(),
-                                        "Codex can now safely edit files and execute commands in your computer"
+                                        "NE-CLI can now safely edit files and execute commands in your computer"
                                             .dark_gray(),
                                     ]),
                                 ]);
@@ -1244,7 +1237,7 @@ impl App {
                                     Line::from(vec!["• ".dim(), "Sandbox ready".into()]),
                                     Line::from(vec![
                                         "  ".into(),
-                                        "Codex can now safely edit files and execute commands in your computer"
+                                        "NE-CLI can now safely edit files and execute commands in your computer"
                                             .dark_gray(),
                                     ]),
                                 ]);
@@ -1274,6 +1267,18 @@ impl App {
                 .await
                 {
                     Ok(_) => {
+                        if self.config.model_provider_id == "ne"
+                            && let Err(err) = crate::ne_cli::save_default_model(&model)
+                        {
+                            tracing::error!(
+                                error = %err,
+                                "failed to persist NE default model"
+                            );
+                            self.chat_widget.add_error_message(format!(
+                                "Failed to save NE default model: {err}"
+                            ));
+                            return Ok(AppRunControl::Continue);
+                        }
                         let effort_label = effort
                             .map(|selected_effort| selected_effort.to_string())
                             .unwrap_or_else(|| "default".to_string());
@@ -2181,5 +2186,78 @@ impl App {
                 AppRunControl::Exit(ExitReason::UserRequested)
             }
         }
+    }
+}
+
+impl App {
+    async fn handle_ne_login_completed(
+        &mut self,
+        app_server: &mut AppServerSession,
+        result: std::result::Result<crate::app_event::NeLoginResult, String>,
+    ) {
+        let login = match result {
+            Ok(login) => login,
+            Err(err) => {
+                self.chat_widget
+                    .add_error_message(format!("NE login failed: {err}"));
+                return;
+            }
+        };
+        let Some(model) = self.ne_login_default_model(&login) else {
+            self.chat_widget
+                .add_error_message("NE login did not return a default model.".to_string());
+            return;
+        };
+
+        let effort = Some(model.default_reasoning_effort);
+        let model_name = model.model.clone();
+        let model_count = login.models.len();
+        let catalog = Arc::new(ModelCatalog::new(login.models));
+        self.model_catalog = catalog.clone();
+        self.chat_widget.set_model_catalog(catalog);
+        self.chat_widget.set_ne_authenticated(true);
+        self.chat_widget.set_model(&model_name);
+        self.on_update_reasoning_effort(effort);
+        self.sync_active_thread_model_setting(app_server, model_name.clone())
+            .await;
+        self.sync_active_thread_reasoning_setting(app_server, effort)
+            .await;
+        self.sync_active_thread_service_tier_to_cached_session()
+            .await;
+        self.chat_widget.add_info_message(
+            format!("Logged in to NE. Loaded {model_count} models."),
+            Some(format!("Default model: {model_name}")),
+        );
+    }
+
+    fn handle_ne_logout_completed(&mut self, result: std::result::Result<(), String>) {
+        match result {
+            Ok(()) => {
+                let catalog = Arc::new(ModelCatalog::new(Vec::new()));
+                self.model_catalog = catalog.clone();
+                self.chat_widget.set_model_catalog(catalog);
+                self.chat_widget.set_ne_authenticated(false);
+                self.chat_widget
+                    .add_info_message("Logged out of NE.".to_string(), /*hint*/ None);
+            }
+            Err(err) => {
+                self.chat_widget
+                    .add_error_message(format!("NE logout failed: {err}"));
+            }
+        }
+    }
+
+    fn ne_login_default_model(
+        &self,
+        login: &crate::app_event::NeLoginResult,
+    ) -> Option<ModelPreset> {
+        if login.default_model.trim().is_empty() {
+            return None;
+        }
+        login
+            .models
+            .iter()
+            .find(|model| model.model == login.default_model)
+            .cloned()
     }
 }

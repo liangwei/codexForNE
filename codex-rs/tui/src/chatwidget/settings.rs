@@ -214,6 +214,19 @@ impl ChatWidget {
         self.model_catalog.clone()
     }
 
+    pub(crate) fn set_model_catalog(&mut self, model_catalog: Arc<ModelCatalog>) {
+        self.model_catalog = model_catalog;
+        self.refresh_model_dependent_surfaces();
+    }
+
+    pub(crate) fn set_ne_authenticated(&mut self, authenticated: bool) {
+        self.ne_authenticated = authenticated;
+    }
+
+    pub(super) fn ne_login_required(&self) -> bool {
+        self.config.model_provider_id == NE_PROVIDER_ID && !self.ne_authenticated
+    }
+
     pub(crate) fn current_plan_type(&self) -> Option<PlanType> {
         self.plan_type
     }
