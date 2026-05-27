@@ -421,6 +421,9 @@ impl ChatWidget {
             SlashCommand::Mcp => {
                 self.add_mcp_output(McpServerStatusDetail::ToolsAndAuthOnly);
             }
+            SlashCommand::RagImport => {
+                self.show_ne_rag_import_usage();
+            }
             SlashCommand::Apps => {
                 self.add_connectors_output();
             }
@@ -775,6 +778,9 @@ impl ChatWidget {
                     instructions: args,
                 }));
             }
+            SlashCommand::RagImport if !trimmed.is_empty() => {
+                self.start_ne_rag_import(trimmed);
+            }
             SlashCommand::Resume if !trimmed.is_empty() => {
                 self.app_event_tx
                     .send(AppEvent::ResumeSessionByIdOrName(args));
@@ -941,6 +947,7 @@ impl ChatWidget {
             | SlashCommand::MemoryDrop
             | SlashCommand::MemoryUpdate
             | SlashCommand::Mcp
+            | SlashCommand::RagImport
             | SlashCommand::Apps
             | SlashCommand::Plugins
             | SlashCommand::Rollout

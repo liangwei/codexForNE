@@ -265,6 +265,11 @@ pub(crate) enum AppEvent {
         result: Result<(), String>,
     },
 
+    /// Result of importing local documents into the NE RAG index.
+    NeRagImportCompleted {
+        result: Result<String, String>,
+    },
+
     /// Refresh account rate limits in the background.
     RefreshRateLimits {
         origin: RateLimitRefreshOrigin,

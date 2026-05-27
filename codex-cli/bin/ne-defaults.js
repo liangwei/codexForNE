@@ -7,11 +7,34 @@ import {
   resolveNeToken,
 } from "./ne-auth.js";
 import fs from "fs";
+import path from "path";
 import { fileURLToPath } from "url";
 import {
   fetchAndStoreNeModelCatalog,
   resolveNeModelCatalogPath,
 } from "./ne-models.js";
+
+const NE_MCP_SERVER_NAME = "ne_literature";
+const CONFIG_TOML_FILE = "config.toml";
+const NE_MCP_STARTUP_TIMEOUT_SEC = 5;
+const NE_MCP_TOOL_TIMEOUT_SEC = 60;
+const NE_MCP_ENV_VARS = Object.freeze([
+  "APPDATA",
+  "LOCALAPPDATA",
+  "USERPROFILE",
+  "PATH",
+  "TEMP",
+  "TMP",
+  "SystemRoot",
+  "COMSPEC",
+  "HOME",
+  "LANG",
+  "LC_ALL",
+  "NE_CLI_API_KEY",
+  "NE_CLI_HOME",
+  "NE_CLI_MODEL",
+  "TERM",
+]);
 
 /**
  * Applies NE provider defaults before handing control to the native CLI.
@@ -23,7 +46,7 @@ export async function applyNeCliDefaults(args, env = process.env) {
 
   ensureNeCliState(env);
   await refreshCatalogForLoggedInUser(env);
-  return [...buildNeConfigArgs(env), ...args];
+  return [...buildNeConfigArgs(env, args), ...args];
 }
 
 function ensureNeCliState(env) {
@@ -41,11 +64,13 @@ async function refreshCatalogForLoggedInUser(env) {
   await fetchAndStoreNeModelCatalog(token, env);
 }
 
-function buildNeConfigArgs(env) {
+function buildNeConfigArgs(env, userArgs) {
   const model = resolveDefaultModel(env);
   const authHelperPath = fileURLToPath(new URL("./ne-auth.js", import.meta.url));
   const modelCatalogPath = resolveNeModelCatalogPath(env);
+  const neCliPath = fileURLToPath(new URL("./necli.js", import.meta.url));
   env.NECLI_AUTH_HELPER = authHelperPath;
+  env.NECLI_BIN_PATH = neCliPath;
   env.NECLI_NODE_BINARY = process.execPath;
 
   const configArgs = [
@@ -91,7 +116,73 @@ function buildNeConfigArgs(env) {
   if (fs.existsSync(modelCatalogPath)) {
     configArgs.push("-c", `model_catalog_json=${tomlString(modelCatalogPath)}`);
   }
+  appendNeMcpConfigArgs(configArgs, env, userArgs);
   return configArgs;
+}
+
+function appendNeMcpConfigArgs(configArgs, env, userArgs) {
+  if (userConfiguredMcpServer(env, userArgs, NE_MCP_SERVER_NAME)) {
+    return;
+  }
+
+  const mcpServerPath = fileURLToPath(new URL("./ne-mcp-server.js", import.meta.url));
+  const prefix = `mcp_servers.${NE_MCP_SERVER_NAME}`;
+  configArgs.push(
+    "-c",
+    `${prefix}.command=${tomlString(process.execPath)}`,
+    "-c",
+    `${prefix}.args=${tomlArray([mcpServerPath])}`,
+    "-c",
+    `${prefix}.env_vars=${tomlArray(NE_MCP_ENV_VARS)}`,
+    "-c",
+    `${prefix}.startup_timeout_sec=${NE_MCP_STARTUP_TIMEOUT_SEC}`,
+    "-c",
+    `${prefix}.tool_timeout_sec=${NE_MCP_TOOL_TIMEOUT_SEC}`,
+    "-c",
+    `${prefix}.default_tools_approval_mode=${tomlString("approve")}`,
+    "-c",
+    `${prefix}.tools.ne_mcp_save_articles.approval_mode=${tomlString("prompt")}`,
+    "-c",
+    `${prefix}.tools.ne_rag_import.approval_mode=${tomlString("prompt")}`,
+  );
+}
+
+function userConfiguredMcpServer(env, userArgs, serverName) {
+  return hasMcpServerOverride(userArgs, serverName) || configTomlDefinesMcpServer(env, serverName);
+}
+
+function hasMcpServerOverride(args, serverName) {
+  const plainPath = `mcp_servers.${serverName}`;
+  const quotedPath = `mcp_servers."${serverName}"`;
+  return configOverrideValues(args).some((value) => value.includes(plainPath) || value.includes(quotedPath));
+}
+
+function configOverrideValues(args) {
+  const values = [];
+  for (let index = 0; index < args.length; index += 1) {
+    const inlineValue = valueFromInlineConfigArg(args[index]);
+    if (inlineValue) {
+      values.push(inlineValue);
+    }
+    if ((args[index] === "-c" || args[index] === "--config") && index + 1 < args.length) {
+      values.push(args[index + 1]);
+    }
+  }
+  return values;
+}
+
+function configTomlDefinesMcpServer(env, serverName) {
+  const configPath = path.join(env.CODEX_HOME || resolveNeCodexHome(env), CONFIG_TOML_FILE);
+  if (!fs.existsSync(configPath)) {
+    return false;
+  }
+  const escaped = escapeRegex(serverName);
+  const pattern = new RegExp(`^\\s*\\[mcp_servers\\.(?:"${escaped}"|${escaped})[\\].]`, "m");
+  return pattern.test(fs.readFileSync(configPath, "utf8"));
+}
+
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function hasBypassArg(args) {

@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import { runNeAuthCommand } from "./ne-auth.js";
+import { runNeRagCommand } from "./ne-rag-cli.js";
 
 const args = process.argv.slice(2);
 if (isVersionCommand(args)) {
@@ -13,6 +14,11 @@ if (isVersionCommand(args)) {
 const authCommandExitCode = await runNeAuthCommand(args);
 if (authCommandExitCode !== null) {
   process.exit(authCommandExitCode);
+}
+
+const ragCommandExitCode = await runNeRagCommand(args);
+if (ragCommandExitCode !== null) {
+  process.exit(ragCommandExitCode);
 }
 
 process.env.NECLI_ENABLE_DEFAULTS = "1";

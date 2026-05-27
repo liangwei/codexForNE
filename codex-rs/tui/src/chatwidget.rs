@@ -350,6 +350,7 @@ mod keymap_picker;
 mod mcp_startup;
 use self::mcp_startup::McpStartupStatus;
 mod ne_login;
+mod ne_rag_import;
 mod pets;
 mod session_flow;
 mod session_header;

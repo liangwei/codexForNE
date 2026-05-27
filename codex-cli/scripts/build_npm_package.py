@@ -237,7 +237,18 @@ def stage_sources(staging_dir: Path, version: str, package: str) -> None:
         shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-auth.js", bin_dir / "ne-auth.js")
         shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-defaults.js", bin_dir / "ne-defaults.js")
         shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-login.js", bin_dir / "ne-login.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-mcp-config.js", bin_dir / "ne-mcp-config.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-mcp-rpc.js", bin_dir / "ne-mcp-rpc.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-mcp-server.js", bin_dir / "ne-mcp-server.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-mcp-tools.js", bin_dir / "ne-mcp-tools.js")
         shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-models.js", bin_dir / "ne-models.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-rag-cli.js", bin_dir / "ne-rag-cli.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-rag-config.js", bin_dir / "ne-rag-config.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-rag-embedding.js", bin_dir / "ne-rag-embedding.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-rag-indexer.js", bin_dir / "ne-rag-indexer.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-rag-store.js", bin_dir / "ne-rag-store.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-rag-text.js", bin_dir / "ne-rag-text.js")
+        shutil.copy2(CODEX_CLI_ROOT / "bin" / "ne-rag-tools.js", bin_dir / "ne-rag-tools.js")
         shutil.copy2(CODEX_CLI_ROOT / "bin" / "necli.js", bin_dir / "necli.js")
 
         readme_src = REPO_ROOT / "README.md"
@@ -302,7 +313,18 @@ def stage_sources(staging_dir: Path, version: str, package: str) -> None:
             "bin/ne-auth.js",
             "bin/ne-defaults.js",
             "bin/ne-login.js",
+            "bin/ne-mcp-config.js",
+            "bin/ne-mcp-rpc.js",
+            "bin/ne-mcp-server.js",
+            "bin/ne-mcp-tools.js",
             "bin/ne-models.js",
+            "bin/ne-rag-cli.js",
+            "bin/ne-rag-config.js",
+            "bin/ne-rag-embedding.js",
+            "bin/ne-rag-indexer.js",
+            "bin/ne-rag-store.js",
+            "bin/ne-rag-text.js",
+            "bin/ne-rag-tools.js",
             "bin/necli.js",
         ]
         package_json["optionalDependencies"] = {

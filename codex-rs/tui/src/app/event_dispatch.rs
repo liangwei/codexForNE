@@ -693,6 +693,9 @@ impl App {
             AppEvent::NeLogoutCompleted { result } => {
                 self.handle_ne_logout_completed(result);
             }
+            AppEvent::NeRagImportCompleted { result } => {
+                self.chat_widget.on_ne_rag_import_completed(result);
+            }
             AppEvent::RefreshRateLimits { origin } => {
                 self.refresh_rate_limits(app_server, origin);
             }

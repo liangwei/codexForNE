@@ -15,7 +15,18 @@
     "bin/ne-auth.js",
     "bin/ne-defaults.js",
     "bin/ne-login.js",
+    "bin/ne-mcp-config.js",
+    "bin/ne-mcp-rpc.js",
+    "bin/ne-mcp-server.js",
+    "bin/ne-mcp-tools.js",
     "bin/ne-models.js",
+    "bin/ne-rag-cli.js",
+    "bin/ne-rag-config.js",
+    "bin/ne-rag-embedding.js",
+    "bin/ne-rag-indexer.js",
+    "bin/ne-rag-store.js",
+    "bin/ne-rag-text.js",
+    "bin/ne-rag-tools.js",
     "bin/necli.js"
   ],
   "repository": {

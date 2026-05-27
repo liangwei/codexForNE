@@ -44,6 +44,7 @@ pub enum SlashCommand {
     Raw,
     Diff,
     Mention,
+    RagImport,
     Status,
     DebugConfig,
     Title,
@@ -94,6 +95,7 @@ impl SlashCommand {
             SlashCommand::Raw => "toggle raw scrollback mode for copy-friendly terminal selection",
             SlashCommand::Diff => "show git diff (including untracked files)",
             SlashCommand::Mention => "mention a file",
+            SlashCommand::RagImport => "index local documents for NE RAG",
             SlashCommand::Skills => "use skills to improve how NE-CLI performs specific tasks",
             SlashCommand::Hooks => "view and manage lifecycle hooks",
             SlashCommand::Status => "show current session configuration and token usage",
@@ -156,6 +158,7 @@ impl SlashCommand {
                 | SlashCommand::Ide
                 | SlashCommand::Keymap
                 | SlashCommand::Mcp
+                | SlashCommand::RagImport
                 | SlashCommand::Raw
                 | SlashCommand::Pets
                 | SlashCommand::Side
@@ -197,6 +200,7 @@ impl SlashCommand {
             | SlashCommand::Experimental
             | SlashCommand::Memories
             | SlashCommand::Review
+            | SlashCommand::RagImport
             | SlashCommand::Plan
             | SlashCommand::Clear
             | SlashCommand::Logout
